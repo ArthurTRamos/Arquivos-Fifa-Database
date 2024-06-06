@@ -275,11 +275,13 @@ bool RemotionBinFile(char *inFileName, char* indexFileName, int n, HEADER* heade
             scan_quote_string(campValue[i]);
     }
 
-    // Remove os registros
+    // REMOÇÃO DOS REGISTROS
     if(RemoveBinData(inFileName, indexFileName, duplas, campName, campValue, n, headerOp))
         return true;
     else
         return false;
+
+
 
     for(int i = 0; i < duplas; i++) {
         free(campName[i]);

@@ -695,6 +695,7 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
     
     char statusCab; // Status do arquivo binário (cabeçalho)
     int onReg, offReg; // Registros não removidos e removidos
+    char statusConsist = '0'; //para setar quando for manipular o arquivo
 
     int begin = 25; // byteoffset inicial de registros
     long long removedByteOffSet;
@@ -708,7 +709,7 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
     // Itera sobre os campos de busca e verifica se há o id
     for(int j = 0; j < duplas; j++){
         if(strcmp(campName[j], "id") == 0) {
-            // Remove com base no id
+            // REMOVE COM BASE NO ID
             if(RemoveBinDataID(binFile, indexFileName, duplas, campName, campValue, n, atoi(campValue[j]), &headerOp)) {
                 flagID = 1;
             }else{
@@ -717,7 +718,7 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
         }
     }
 
-    // Se não houver o id
+    // SE NÃO HOUVER CAMPO ID, BUSCA SEQUENCIAL NO BINARIO
     if(flagID == 0) {
         data = CreateData(1);
 
@@ -734,6 +735,9 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
             return false;
         }
 
+        fseek(binFile, 0, SEEK_SET);
+        fwrite(&statusConsist, 1, 1, binFile); //status vira 0, pois irá manipular o arquivo
+
         // Lê o resto do cabeçalho
         fread(&topoCab, 8, 1, binFile);
         fread(lixo, 8, 1, binFile);
@@ -749,12 +753,14 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
             data[0]->removed = status;
             fread(&(data[0]->registerSize), sizeof(int), 1, binFile);
 
-            // Se o registro estiver removido, pula
+            // SE O REGISTRO ESTIVER REMOVIDO, PULA
             if(status == '1') {
                 fread(lixo, data[0]->registerSize - 5, 1, binFile);
                 begin += data[0]->registerSize;
             }
             else {
+
+            // LE AS INFORMAÇOES DO REGISTRO
                 removedByteOffSet = begin;
 
                 fread(&(data[0]->nextRegister), sizeof(long long), 1, binFile);
@@ -781,7 +787,7 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
                 campCounter = 0;
                 
                 // Itera o registro sobre todos campos pedidos na busca
-                // Compara os campos com o registro lido anteriormente
+                // COMPARA OS CAMPOS DE BUSCA COM O REGISTRO
                 for(int j = 0; j < duplas; j++) {
                     
                     // Campo de busca Idade
@@ -819,17 +825,18 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
                     }
                 }
 
-                // Se todos os campos de busca forem encontrados, remove
+                // SE TODOS OS CAMPOS DE BUSCA FOREM ENCONTRADOS, REMOVE
                 if(campCounter == duplas) {
                     data[0]->removed = '1';
 
                     fseek(binFile, -data[0]->registerSize, SEEK_CUR);
-                    fwrite(&data[0]->removed, 1, 1, binFile);
+                    fwrite(&data[0]->removed, 1, 1, binFile); //seta como removido
                     fseek(binFile, (data[0]->registerSize) - 1, SEEK_CUR);
 
                     headerOp->offRegistersNumber++;
                     headerOp->onRegistersNumber--;
-                    // Insere o registro na lista de registros removidos
+
+                    // INSERE O REGISTRO NA LISTA ENCADEADA, MAS SEM ORDENAR
                     insertRemovedNonSortedList(headerOp->top, binFile, removedByteOffSet, &headerOp);
 
                     fseek(binFile, begin, SEEK_SET);
@@ -853,6 +860,11 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
         FreeMemoryData(&data, 1);
     }
 
+    statusConsist = '1';
+
+    fseek(binFile, 0, SEEK_SET);
+    fwrite(&statusConsist, 1, 1, binFile); //terminou, entao seta para consistente novamente
+
     fclose(binFile);
     return true;
 }
@@ -867,6 +879,7 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
     int onReg, offReg; // Registros não removidos e removidos
     long long topoCab;
     char statusCab;
+    char statusConsist = '0';
     int indice = 0;
 
     if(*headerOp == NULL || dataToBeRemoved == NULL)
@@ -880,6 +893,9 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
         return false;
     }
 
+    fseek(binFile, 0, SEEK_SET);
+	fwrite(&statusConsist, 1, 1, binFile); //status vira 0, pois irá manipular o arquivo
+
     // Lê o resto do cabeçalho
     fread(&topoCab, 8, 1, binFile);
     fread(lixo, 8, 1, binFile);
@@ -890,7 +906,7 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
     (*headerOp)->onRegistersNumber = onReg;
     (*headerOp)->offRegistersNumber = offReg;
 
-    // Vetores para manipulação do índice
+    // VETORES PARA LEITURA DO REGISTRO DE INDICES
     int IDVector[2000];
     long long IDbyteOffSetVector[2000];
 
@@ -1021,6 +1037,8 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
     fwrite(&(*headerOp)->onRegistersNumber, sizeof(int), 1, binFile);
     fwrite(&(*headerOp)->offRegistersNumber, sizeof(int), 1, binFile);
 
+    //VOLTA REMOVEBINDATAAAAAAA
+
     // Nenhum registro bate com as buscas
     if(regFinded == 0) {
         fclose(binFile);
@@ -1071,7 +1089,8 @@ void insertRemovedNonSortedList(long long topo, FILE* binFile, long long byteOff
             return;
         }
         insertRemovedNonSortedList(auxTopo, binFile, byteOffSetToBeInserted, headerOp);
-    }else {
+
+    }else { //ENTRA AQUI SOMENTE SE O TOPO DO CABECALHO SEJA -1
         fseek(binFile, 1, SEEK_SET);
         (*headerOp)->top = byteOffSetToBeInserted;
         fwrite(&byteOffSetToBeInserted, sizeof(long long), 1, binFile);
@@ -1083,18 +1102,18 @@ void insertRemovedNonSortedList(long long topo, FILE* binFile, long long byteOff
 }
 
 // Obtém a lista de removidos com tamanho dos registros e byteoffsets
-// Ordena a lista
+// ORDENA A LISTA ENCADEADA
 void removedSortedList(long long topo, FILE* binFile, long long* byteOffSetVector, int* sizeRegisterVector, int keepTrack, HEADER** headerOp) {
     if((*headerOp)->offRegistersNumber == 0)
         return;
 
-    // Obteve todos os registros removidos
+    // SE JÁ PERCORREU TODA A LISTA ENCADEADA
     if(keepTrack == (*headerOp)->offRegistersNumber) {
         SortListRemove(&sizeRegisterVector, &byteOffSetVector, *headerOp);
         (*headerOp)->top = byteOffSetVector[0];
         fseek(binFile, 1, SEEK_SET);
         fwrite(&(*headerOp)->top, 8, 1, binFile);
-        // Reescreve a lista de removidos no arquivo binário
+        // RESCREVE A LISTA ENCADEADA NO BINARIO
         writeSortedList(sizeRegisterVector, byteOffSetVector, binFile, 0, *headerOp);
         return;
     }
@@ -1106,7 +1125,7 @@ void removedSortedList(long long topo, FILE* binFile, long long* byteOffSetVecto
     keepTrack + 1, headerOp);
 }
 
-// Ordena a lista de registros removidos pelo tamanho do registro
+// ORDENA COM BASE EM TAMANHO DE REGISTRO
 void SortListRemove(int **sizeRegisterVector, long long** bytesOffSetVector, HEADER* headerOp) {
     QuickSortRemove(0, headerOp->offRegistersNumber - 1, sizeRegisterVector, bytesOffSetVector);
 }

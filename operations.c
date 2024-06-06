@@ -53,6 +53,7 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
     long long* bytesOffSetSecond; // Usado na criação do último índice
 
     // Cria o primeiro arquivo de índice
+    // FUNCIONALIDADE 4
     if(ReadOnBinFile(inFileName, &bytesOffSetFirst)) {
         SortRegisters(&bytesOffSetFirst);
         WriteBinIndex(indexFileName, bytesOffSetFirst);
@@ -65,7 +66,9 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
     }
 
     headerOp = CreateHeader();
-    // Efetua as remoções
+
+
+    // ITERA UMA VEZ PRA CADA REMOÇÃO
     for(int i = 0; i < numberOfRemotions; i++) {
         // Erro na remoção de número i
         if(!RemotionBinFile(inFileName, indexFileName, i, headerOp)) {
@@ -74,9 +77,11 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
         }
     }
 
+
     FreeMemoryHeader(&headerOp);
 
     // Cria o segundo arquivo de índice
+    //FUNCIONALIDADE 4
     if(ReadOnBinFile(inFileName, &bytesOffSetSecond)) {
         SortRegisters(&bytesOffSetSecond);
         WriteBinIndex(indexFileName, bytesOffSetSecond);
