@@ -40,10 +40,11 @@ int CreateList(FILE* inFile) {
     char lixo;
     long int topo, ByteOffSet;
     int tam;
+    char stats = '0';
 
     fseek(inFile, 0, SEEK_SET);
     
-    fread(&lixo, 1, 1, inFile);
+    fwrite(&stats, 1, 1, inFile);
     fread(&topo, 8, 1, inFile);
     
     long int teste; // byteoffset de fim do arquivo

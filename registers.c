@@ -666,7 +666,11 @@ void Inserir(FILE* inFile, int NInsercoes, int teste) {
     nReg = nReg + NInsercoes;
     fread(&nRem, 4, 1, inFile);
     nRem = nRem - nRemAux;
-    fseek(inFile, 9, SEEK_SET);
+    fseek(inFile, 0, SEEK_SET);
+    char stats = '1';
+    long long lixo2;
+    fwrite(&stats, sizeof(char), 1, inFile);
+    fread(&lixo2, sizeof(long long), 1, inFile);
     fwrite(&PBO, sizeof(long int), 1, inFile);
     fwrite(&nReg, sizeof(int), 1, inFile);
     fwrite(&nRem, sizeof(int), 1, inFile);
@@ -1202,7 +1206,7 @@ void SwapRegisters(int reg1, int reg2) {
     dataAux = NULL;
 }
 
-// Escreve no registro de índices
+// Escreve no arquivo de índices
 void WriteRegistersIndex(FILE* indexFile, long long* bytesOffSet) {
     char stats = '0';
     fwrite(&stats, sizeof(char), 1, indexFile);
