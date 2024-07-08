@@ -5,6 +5,7 @@
     #include <stdlib.h>
     #include <string.h>
     #include <ctype.h>
+    #include <stdbool.h>
 
     void binarioNaTela(char *nomeArquivoBinario);
     void scan_quote_string(char *str);

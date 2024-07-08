@@ -1,12 +1,7 @@
 #ifndef REGISTERS_H
     #define REGISTERS_H
 
-    #include <stdio.h>
-    #include <stdlib.h>
-    #include <string.h>
-    #include <stdbool.h>
-    #include "list.h"
-    #include "funcoes_fornecidas.h"
+    #include "bTree.h"
 
     typedef struct headerRegister HEADER;
     typedef struct dataRegister DATA;
@@ -48,7 +43,7 @@
     void SearchBinData(int duplas, char** campName, char** campValue, int i);
 
     // Insere os novos registros no arquivo binário
-    void Inserir(FILE* inFile, int NInsercoes, int teste);
+    void Inserir(FILE* inFile, int NInsercoes, int nextByteOffset, FILE* treeFile, bool bTree);
 
     // Remove os registros pedidos
     bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** campName,
@@ -62,19 +57,9 @@
     long long binarySearchID(int* IDVector, long long* byteOffSetVector, int IDValue, int begin,
     int end);
 
-    // Insere um novo registro removido/byteoffset no final da lista de removidos
-    void insertRemovedNonSortedList(long long topo, FILE* binFile, long long byteOffSetToBeInserted, HEADER** headerOp);
-
-    // Obtém e ordena a lista de removidos
-    void removedSortedList(long long topo, FILE* binFile, long long* byteOffSetVector, int* sizeRegisterVector, int keepTrack, HEADER** headerOp);
+    // Inserção do removido na lista encadeada ordenada
+    void sortedInsertion(FILE* binFile, long long currentByteoffset, long long previousByteoffset, int newRegisterSize, long long newByteoffset, HEADER** headerOp);
     
-    // Ordena a lista de removidos por tamanho do registro
-    // e Reescreve no arquivo binário
-    void SortListRemove(int **sizeRegisterVector, long long** bytesOffSet, HEADER* headerOp);
-    void QuickSortRemove(int begin, int end, int **sizeRegisterVector, long long** bytesOffSet);
-    int SortElementsRemove(int begin, int end, int **sizeRegisterVector, long long** bytesOffSet);
-    void writeSortedList(int* sizeRegisterVector, long long* byteOffSetVector, FILE* binFile, int counter, HEADER* headerOp);
-
     // Ordena os registros de dados por ID
     void SortRegisters(long long** bytesOffSet);
     void QuickSort(int begin, int end, long long** bytesOffSet);
@@ -87,5 +72,8 @@
     // Libera memória dos registros de cabeçalho e de dados
     void FreeMemoryHeader(HEADER** header);
     void FreeMemoryData(DATA*** data, int registers);
+
+    // Faz uma busca na árvore b sem o id
+    void searchWithoutId(FILE* inFile, int buscaAtual, char** slots, int nSlots);
 
 #endif

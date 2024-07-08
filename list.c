@@ -40,19 +40,27 @@ int CreateList(FILE* inFile) {
     char lixo;
     long int topo, ByteOffSet;
     int tam;
-    char stats = '0';
+    char stats;
 
     fseek(inFile, 0, SEEK_SET);
+
+    fread(&stats, 1, 1, inFile);
+
+    if(stats == '0')
+        return -1;
     
+    fseek(inFile, 0, SEEK_SET);
+    stats = '0';
+
     fwrite(&stats, 1, 1, inFile);
     fread(&topo, 8, 1, inFile);
     
-    long int teste; // byteoffset de fim do arquivo
-    fread(&teste, 8, 1, inFile);
+    long int nextByteOffset; // byteoffset de fim do arquivo
+    fread(&nextByteOffset, 8, 1, inFile);
 
     // Se não houver removidos, só retorna o último byte do arquivo
     if(topo <= 1)
-        return teste;
+        return nextByteOffset;
 
     fseek(inFile, topo, SEEK_SET);
     fread(&lixo, sizeof(char), 1, inFile);
@@ -78,7 +86,8 @@ int CreateList(FILE* inFile) {
 
         lista = lista->next;
     }
-    return teste;
+    
+    return nextByteOffset;
 }
 
 // Insere um nó de tamanho de registro tam, próximo byteoffset removido e

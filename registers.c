@@ -406,6 +406,7 @@ bool StoreOnBinInfo(FILE* inFile, int onReg, int offReg, long long** bytesOffSet
 
     // Lê cada registro do arquivo binário até o fim ou até encontrar todos os registros
     // não removidos
+
     while(fread(&status, sizeof(char), 1, inFile) != 0 && i != onReg) {
         data[i]->removed = status;
         fread(&(data[i]->registerSize), sizeof(int), 1, inFile);
@@ -565,62 +566,60 @@ void SearchBinData(int duplas, char** campName, char** campValue, int i) {
 }
 
 // Insere os registros de entrada no arquivo binário
-void Inserir(FILE* inFile, int NInsercoes, int teste) {
+void Inserir(FILE* inFile, int NInsercoes, int nextByteOffset, FILE* treeFile, bool bTree) {
+    T_HEADER* T_header;
+    PROMOVE* promove;
     char removed = '0';
     long int nextRegister = -1;
     char c = '$';
+    char stats = '1';
+    long long lixo;
 
-    int Id; // ID do jogador
-    int Age; // Idade do jogador
-    int NameSize;
-    char* Name; // Nome do jogador
-    int NatSize;
-    char* Nat; // Nacionalidade do jogador
-    int ClubSize;
-    char* Club; // Clube do jogador
+    DATA* dataVetor = (DATA*) malloc(sizeof(DATA));
 
-    int n, tam, lixo, byteOffSet, cifrao, nReg, tFinal, writeTam, nRem, nRemAux;
+    int n, tam, byteOffSet, cifrao, nReg, tFinal, writeTam, nRem, nRemAux;
     long int PBO; // Próximo byteoffset
-    char* vetor;
 
     nRemAux = 0; // Número de registros inseridos
     tFinal = 0;
 
-    vetor = (char*) malloc(40 * sizeof(char));
-    Nat = (char*) malloc(40 * sizeof(char));
-    Name = (char*) malloc(40 * sizeof(char));
-    Club = (char*) malloc(40 * sizeof(char));
+    dataVetor->playerNat = (char*) malloc(40 * sizeof(char));
+    dataVetor->playerName = (char*) malloc(40 * sizeof(char));
+    dataVetor->playerClub = (char*) malloc(40 * sizeof(char));
+
+    if(bTree) {
+        insertPreparations(&T_header, &promove, treeFile);
+    }
     
     for(int i = 0; i < NInsercoes; ++i) {
         cifrao = 0;
 
-        ClubSize = 0;
-        NameSize = 0;
-        NatSize = 0;
+        dataVetor->playerNameSize = 0;
+        dataVetor->playerNatSize = 0;
+        dataVetor->playerClubSize = 0;
 
         // Lê as informações do registro
-        scan_quote_string(vetor);
-        Id = atoi(vetor);
+        scan_quote_string(dataVetor->playerClub);
+        dataVetor->playerId = atoi(dataVetor->playerClub);
 
-        scan_quote_string(vetor);
-        Age = atoi(vetor);
+        scan_quote_string(dataVetor->playerClub);
+        dataVetor->playerAge = atoi(dataVetor->playerClub);
 
-        if(Age == 0)
-            Age = -1;
+        if(dataVetor->playerAge == 0)
+            dataVetor->playerAge = -1;
 
-        scan_quote_string(vetor);
-        strcpy(Name, vetor);
-        NameSize = strlen(vetor); 
+        scan_quote_string(dataVetor->playerClub);
+        strcpy(dataVetor->playerName, dataVetor->playerClub);
+        dataVetor->playerNameSize = strlen(dataVetor->playerClub); 
 
-        scan_quote_string(vetor);
-        strcpy(Nat, vetor);
-        NatSize = strlen(vetor);
+        scan_quote_string(dataVetor->playerClub);
+        strcpy(dataVetor->playerNat, dataVetor->playerClub);
+        dataVetor->playerNatSize = strlen(dataVetor->playerClub);
 
-        scan_quote_string(vetor);
-        strcpy(Club, vetor);
-        ClubSize = strlen(vetor);     
+        scan_quote_string(dataVetor->playerClub);
+        dataVetor->playerClubSize = strlen(dataVetor->playerClub);     
 
-        tam = ClubSize + NameSize + NatSize + 33;
+        tam = dataVetor->playerNameSize + dataVetor->playerNatSize + dataVetor->playerClubSize + 33;
 
         // Busca pelo registro capaz de corportar o tamanho tam
         byteOffSet = FindNo(tam, inFile);
@@ -628,13 +627,13 @@ void Inserir(FILE* inFile, int NInsercoes, int teste) {
         // Insere o registro no final do arquivo binário
         if(byteOffSet == -1) {
             fseek(inFile, 0, SEEK_END);
+            byteOffSet = ftell(inFile);
             cifrao = 0;
             writeTam = tam;
             tFinal = tFinal + tam;
         // Insere no registro de byteoffset encontrado
         } else {
-            fseek(inFile, byteOffSet, SEEK_SET);
-            fread(&lixo, 1, 1, inFile);
+            fseek(inFile, byteOffSet + 1, SEEK_SET);
             fread(&writeTam, sizeof(int), 1, inFile);
             cifrao = writeTam - tam;
             fseek(inFile, byteOffSet, SEEK_SET);
@@ -645,40 +644,50 @@ void Inserir(FILE* inFile, int NInsercoes, int teste) {
         fwrite(&(removed), sizeof(char), 1, inFile);
         fwrite(&(writeTam), sizeof(int), 1, inFile);
         fwrite(&(nextRegister), sizeof(long int), 1, inFile);
-        fwrite(&(Id), sizeof(int), 1, inFile);
-        fwrite(&(Age), sizeof(int), 1, inFile);
-        fwrite(&(NameSize), sizeof(int), 1, inFile);
-        fwrite(Name, NameSize * sizeof(char), 1, inFile);
-        fwrite(&(NatSize), sizeof(int), 1, inFile);
-        fwrite(Nat, NatSize * sizeof(char), 1, inFile);
-        fwrite(&(ClubSize), sizeof(int), 1, inFile);
-        fwrite(Club, ClubSize * sizeof(char), 1, inFile); 
+        fwrite(&(dataVetor->playerId), sizeof(int), 1, inFile);
+        fwrite(&(dataVetor->playerAge), sizeof(int), 1, inFile);
+        fwrite(&(dataVetor->playerNameSize), sizeof(int), 1, inFile);
+        fwrite(dataVetor->playerName, dataVetor->playerNameSize * sizeof(char), 1, inFile);
+        fwrite(&(dataVetor->playerNatSize), sizeof(int), 1, inFile);
+        fwrite(dataVetor->playerNat, dataVetor->playerNatSize * sizeof(char), 1, inFile);
+        fwrite(&(dataVetor->playerClubSize), sizeof(int), 1, inFile);
+        fwrite(dataVetor->playerClub, dataVetor->playerClubSize * sizeof(char), 1, inFile); 
         
         // Escreve os cifrões necessários no fim do registro
-        for(int i = 0; i < cifrao; ++i)
+        for(int i = 0; i < cifrao; ++i) {
             fwrite(&c, sizeof(char), 1, inFile);
+        }
+
+        if(bTree) {
+            insertReg(&T_header, &promove, inFile, treeFile, dataVetor->playerId, byteOffSet);
+        }
+    }
+
+    if(bTree) {
+        insertFinalizations(&T_header, &promove, treeFile);
+        FreeTreeHeader(&T_header);
+        free(promove);
     }
 
     // Atualiza os dados do cabeçalho
     fseek(inFile, 17, SEEK_SET);
-    PBO = teste + tFinal;
+    PBO = nextByteOffset + tFinal;
     fread(&nReg, 4, 1, inFile);
-    nReg = nReg + NInsercoes;
+    nReg = nReg + NInsercoes; // Registros não removidos
     fread(&nRem, 4, 1, inFile);
-    nRem = nRem - nRemAux;
+    nRem = nRem - nRemAux; // Registros removidos
     fseek(inFile, 0, SEEK_SET);
-    char stats = '1';
-    long long lixo2;
     fwrite(&stats, sizeof(char), 1, inFile);
-    fread(&lixo2, sizeof(long long), 1, inFile);
+    fread(&lixo, sizeof(long long), 1, inFile);
     fwrite(&PBO, sizeof(long int), 1, inFile);
     fwrite(&nReg, sizeof(int), 1, inFile);
     fwrite(&nRem, sizeof(int), 1, inFile);
 
-    free(Nat);
-    free(Club);
-    free(Name);
-    free(vetor);
+    // Libera Memória
+    free(dataVetor->playerName);
+    free(dataVetor->playerNat);
+    free(dataVetor->playerClub);
+    free(dataVetor);
 }
 
 // Faz a remoção de registros conforme os campos especificiados
@@ -713,6 +722,7 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
             if(RemoveBinDataID(binFile, indexFileName, duplas, campName, campValue, n, atoi(campValue[j]), &headerOp)) {
                 flagID = 1;
             }else{
+                fclose(binFile);
                 return false;
             }
         }
@@ -724,8 +734,10 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
 
         char status; // Verifica se chegou ao final do arquivo
 
-        if(headerOp == NULL || data == NULL)
+        if(headerOp == NULL || data == NULL) {
+            fclose(binFile);
             return false;
+        }
 
         fread(&statusCab, 1, 1, binFile);
 
@@ -836,8 +848,13 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
                     headerOp->offRegistersNumber++;
                     headerOp->onRegistersNumber--;
 
-                    // INSERE O REGISTRO NA LISTA ENCADEADA, MAS SEM ORDENAR
-                    insertRemovedNonSortedList(headerOp->top, binFile, removedByteOffSet, &headerOp);
+
+                    long long previousByteoffset = -99; //seta essa variavel para -99
+                    //se entrar e for logo inserir no começo, previous sera -99
+                    //desse modo, é possível tratar desse caso
+
+                    //depois de setar como removido, insere na lista encadeada
+                    sortedInsertion(binFile, headerOp->top, previousByteoffset, data[0]->registerSize, removedByteOffSet, &headerOp);
 
                     fseek(binFile, begin, SEEK_SET);
                 }
@@ -848,13 +865,6 @@ bool RemoveBinData(char* inFileName, char* indexFileName, int duplas, char** cam
         fseek(binFile, 17, SEEK_SET);
         fwrite(&headerOp->onRegistersNumber, sizeof(int), 1, binFile);
         fwrite(&headerOp->offRegistersNumber, sizeof(int), 1, binFile);
-
-        long long* byteOffSetVector = (long long*) malloc(headerOp->offRegistersNumber * sizeof(long long));
-        int* sizeRegisterVector = (int*) malloc(headerOp->offRegistersNumber * sizeof(int));
-
-        byteOffSetVector[0] = headerOp->top;
-
-        removedSortedList(headerOp->top, binFile, byteOffSetVector, sizeRegisterVector, 0, &headerOp);
 
         // Se a última busca for realizada, libera memória dos registros
         FreeMemoryData(&data, 1);
@@ -882,14 +892,14 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
     char statusConsist = '0';
     int indice = 0;
 
-    if(*headerOp == NULL || dataToBeRemoved == NULL)
+    if(*headerOp == NULL || dataToBeRemoved == NULL) {
         return false;
+    }
 
     fread(&statusCab, 1, 1, binFile);
 
     // Se o arquivo estiver inconsistente, retorna falso
     if(statusCab == '0') {
-        fclose(binFile);
         return false;
     }
 
@@ -936,7 +946,6 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
 
     // Se não achar o id
     if(byteOffSetToBeRemoved == 0) {
-        fclose(binFile);
         return false;
     }
 
@@ -1027,7 +1036,13 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
             
         (*headerOp)->offRegistersNumber++;
         (*headerOp)->onRegistersNumber--;
-        insertRemovedNonSortedList((*headerOp)->top, binFile, byteOffSetToBeRemoved, headerOp);
+
+        long long previousByteoffset = -99;//seta essa variavel para -99
+        //se entrar e for logo inserir no começo, previous sera -99
+        //desse modo, é possível tratar desse caso
+
+        //depois de setar como removido, insere na lista encadeada
+        sortedInsertion(binFile, (*headerOp)->top, previousByteoffset, dataToBeRemoved[0]->registerSize, byteOffSetToBeRemoved, headerOp);
 
         regFinded++;
     }
@@ -1037,20 +1052,10 @@ bool RemoveBinDataID(FILE* binFile, char* indexFileName, int duplas, char** camp
     fwrite(&(*headerOp)->onRegistersNumber, sizeof(int), 1, binFile);
     fwrite(&(*headerOp)->offRegistersNumber, sizeof(int), 1, binFile);
 
-    //VOLTA REMOVEBINDATAAAAAAA
-
     // Nenhum registro bate com as buscas
     if(regFinded == 0) {
-        fclose(binFile);
         return false;
     }
-    
-    long long* byteOffSetVector = (long long*) malloc((*headerOp)->offRegistersNumber * sizeof(long long));
-    int* sizeRegisterVector = (int*) malloc((*headerOp)->offRegistersNumber * sizeof(int));
-
-    byteOffSetVector[0] = (*headerOp)->top;
-
-    removedSortedList((*headerOp)->top, binFile, byteOffSetVector, sizeRegisterVector, 0, headerOp);
 
     FreeMemoryData(&dataToBeRemoved, 1);
 
@@ -1073,110 +1078,60 @@ long long binarySearchID(int* IDVector, long long* byteOffSetVector, int IDValue
         return binarySearchID(IDVector, byteOffSetVector, IDValue, begin, i - 1);
 }
 
-// Insere o novo registro removido no final da lista de byteoffsets removidos
-void insertRemovedNonSortedList(long long topo, FILE* binFile, long long byteOffSetToBeInserted, HEADER** headerOp) {
-    long long auxTopo;
-    long long menosUm = -1;
-    
-    if(topo != -1) {
-        fseek(binFile, topo + 5, SEEK_SET);
-        fread(&auxTopo, sizeof(long long), 1, binFile);
-        if(auxTopo == -1) {
-            fseek(binFile, -8, SEEK_CUR);
-            fwrite(&byteOffSetToBeInserted, sizeof(long long), 1, binFile);
-            fseek(binFile, byteOffSetToBeInserted + 5, SEEK_SET);
+void sortedInsertion(FILE* binFile, long long currentByteoffset, long long previousByteoffset, int newRegisterSize, long long newByteoffset, HEADER** headerOp) {
+
+    int currentRegisterSize; //tamanho do registro atual
+    long long nextByteoffset; //prox byteoffset
+    long long menosUm = -1; //caso insira no final ou na lista anteriormente vazia
+
+    if(currentByteoffset != -1) { //header->topo != -1 ou byteoffset da recursao anterior != -1
+
+        fseek(binFile, currentByteoffset + 1, SEEK_SET); //vai ate o regsitro a ser comparado
+        fread(&currentRegisterSize, sizeof(int), 1, binFile);
+        fread(&nextByteoffset, sizeof(long long), 1, binFile); //armazena infos para serem comparadas
+        if(newRegisterSize < currentRegisterSize) {
+            if(previousByteoffset != -99) {//nao acabou de entrar na função sorted insertion
+                //INSERE NO MEIO DA LISTA
+
+                fseek(binFile, previousByteoffset + 5, SEEK_SET);
+                fwrite(&newByteoffset, sizeof(long long), 1, binFile);
+                fseek(binFile, newByteoffset + 5, SEEK_SET);//seta previous, new e current bytesoffset
+                fwrite(&currentByteoffset, sizeof(long long), 1, binFile);
+                return;
+
+            }else{ //INSERE NO COMEÇO DA LISTA
+                fseek(binFile, newByteoffset + 5, SEEK_SET);
+                fwrite(&((*headerOp)->top), sizeof(long long), 1, binFile);
+                fseek(binFile, 1, SEEK_SET);//seta header->top e newbyteoffset
+                (*headerOp)->top = newByteoffset;
+                fwrite(&newByteoffset, sizeof(long long), 1, binFile);
+                return;
+            }
+
+        }else{
+            sortedInsertion(binFile, nextByteoffset, currentByteoffset, newRegisterSize, newByteoffset, headerOp);
+        }
+
+    }else{ //header->topo == -1 ou proxbyteoffset anterior == -1
+
+        if((*headerOp)->offRegistersNumber == 1) {//ENTRA AQUI SOMENTE SE O TOPO DO CABECALHO SEJA -1
+        //lista anteriormente vazia
+
+            fseek(binFile, 1, SEEK_SET);
+            (*headerOp)->top = newByteoffset;
+            fwrite(&newByteoffset, sizeof(long long), 1, binFile);//seta o header->top e o newbyteoffset
+            fseek(binFile, newByteoffset + 5, SEEK_SET);
+            fwrite(&menosUm, sizeof(long long), 1, binFile);
+            return;
+        }else{// INSERIR FINAL DA LISTA
+
+            fseek(binFile, previousByteoffset + 5, SEEK_SET);
+            fwrite(&newByteoffset, sizeof(long long), 1, binFile);
+            fseek(binFile, newByteoffset + 5, SEEK_SET);//manipula pra inserir no final da lista
             fwrite(&menosUm, sizeof(long long), 1, binFile);
             return;
         }
-        insertRemovedNonSortedList(auxTopo, binFile, byteOffSetToBeInserted, headerOp);
-
-    }else { //ENTRA AQUI SOMENTE SE O TOPO DO CABECALHO SEJA -1
-        fseek(binFile, 1, SEEK_SET);
-        (*headerOp)->top = byteOffSetToBeInserted;
-        fwrite(&byteOffSetToBeInserted, sizeof(long long), 1, binFile);
-        fseek(binFile, byteOffSetToBeInserted + 5, SEEK_SET);
-        fwrite(&menosUm, sizeof(long long), 1, binFile);
-        return;
     }
-
-}
-
-// Obtém a lista de removidos com tamanho dos registros e byteoffsets
-// ORDENA A LISTA ENCADEADA
-void removedSortedList(long long topo, FILE* binFile, long long* byteOffSetVector, int* sizeRegisterVector, int keepTrack, HEADER** headerOp) {
-    if((*headerOp)->offRegistersNumber == 0)
-        return;
-
-    // SE JÁ PERCORREU TODA A LISTA ENCADEADA
-    if(keepTrack == (*headerOp)->offRegistersNumber) {
-        SortListRemove(&sizeRegisterVector, &byteOffSetVector, *headerOp);
-        (*headerOp)->top = byteOffSetVector[0];
-        fseek(binFile, 1, SEEK_SET);
-        fwrite(&(*headerOp)->top, 8, 1, binFile);
-        // RESCREVE A LISTA ENCADEADA NO BINARIO
-        writeSortedList(sizeRegisterVector, byteOffSetVector, binFile, 0, *headerOp);
-        return;
-    }
-    
-    fseek(binFile, topo + 1, SEEK_SET); // pula removido
-    fread(&sizeRegisterVector[keepTrack], sizeof(int), 1, binFile); // lê o tamanho do atual
-    fread(&byteOffSetVector[keepTrack + 1], sizeof(long long), 1, binFile); // lê o próximo
-    removedSortedList(byteOffSetVector[keepTrack + 1], binFile, byteOffSetVector, sizeRegisterVector,
-    keepTrack + 1, headerOp);
-}
-
-// ORDENA COM BASE EM TAMANHO DE REGISTRO
-void SortListRemove(int **sizeRegisterVector, long long** bytesOffSetVector, HEADER* headerOp) {
-    QuickSortRemove(0, headerOp->offRegistersNumber - 1, sizeRegisterVector, bytesOffSetVector);
-}
-
-void QuickSortRemove(int begin, int end, int **sizeRegisterVector, long long** bytesOffSetVector) {
-    if(begin < end) {
-        int index = SortElementsRemove(begin, end, sizeRegisterVector, bytesOffSetVector);
-        QuickSortRemove(begin, index - 1, sizeRegisterVector, bytesOffSetVector);
-        QuickSortRemove(index, end, sizeRegisterVector, bytesOffSetVector);
-    }
-}
-
-int SortElementsRemove(int begin, int end, int **sizeRegisterVector, long long** bytesOffSet) {
-    int pivot = (*sizeRegisterVector)[(begin + end)/2];
-    long long aux;
-
-    while(begin <= end) {
-        while((*sizeRegisterVector)[begin] < pivot)
-            begin++;
-        while((*sizeRegisterVector)[end] > pivot)
-            end--;
-        if(begin <= end) {
-            aux = (*bytesOffSet)[begin];
-            (*bytesOffSet)[begin] = (*bytesOffSet)[end];
-            (*bytesOffSet)[end] = aux;
-
-            aux = (*sizeRegisterVector)[begin];
-            (*sizeRegisterVector)[begin] = (*sizeRegisterVector)[end];
-            (*sizeRegisterVector)[end] = aux;
-            begin++;
-            end--;
-        }
-    }
-    return begin;
-}
-
-// Reescrita da lista de removidos no arquivo binário
-void writeSortedList(int* sizeRegisterVector, long long* byteOffSetVector, FILE* binFile, int counter, HEADER* headerOp) {
-    long long menosUm = -1;
-
-    // Se chegar no último registro
-    if(counter == (headerOp->offRegistersNumber) - 1) {
-        fseek(binFile, byteOffSetVector[counter] + 5, SEEK_SET);
-        fwrite(&menosUm, 8, 1, binFile);
-        return;
-    }
-    
-    fseek(binFile, byteOffSetVector[counter] + 5, SEEK_SET);
-    fwrite(&byteOffSetVector[counter + 1], 8, 1, binFile);
-
-    writeSortedList(sizeRegisterVector, byteOffSetVector, binFile, counter + 1, headerOp);
 }
 
 // Ordena os ids e byteoffsets por QuickSort
@@ -1266,4 +1221,136 @@ void FreeMemoryData(DATA*** data, int registers) {
 
     free(*data);
     *data = NULL;
+}
+
+// Faz uma busca na árvore b sem o uso do id
+void searchWithoutId(FILE* inFile, int buscaAtual, char** slots, int nSlots) {
+    char status;
+    char lixo[20];
+    int onReg, offReg, total;
+
+    DATA* dados = (DATA*) malloc(sizeof(DATA)); // Dados requisitados pela busca (slots)
+    DATA* scan = (DATA*) malloc(sizeof(DATA)); // Dados do registro atual da leitura
+
+    scan->playerClub = (char*) malloc(40);
+    scan->playerName = (char*) malloc(40);
+    scan->playerNat = (char*) malloc(40);
+
+    dados->playerClub = (char*) malloc(40);
+    dados->playerName = (char*) malloc(40);
+    dados->playerNat = (char*) malloc(40);
+
+    dados->playerAge = -1;
+    dados->playerClubSize = -1;
+    dados->playerNameSize = -1;
+    dados->playerNatSize = -1;
+    
+    // Copia os dados da busca para o vetor slots
+    for(int i = 0; i < nSlots * 2; i = i + 2) {
+        if(strcmp(slots[i], "idade") == 0) {
+            dados->playerAge = atoi(slots[i+1]);
+            continue;
+        }
+
+        if(strcmp(slots[i], "nomeJogador") == 0) {
+            dados->playerNameSize = strlen(slots[i+1]);
+            strcpy(dados->playerName, slots[i+1]);
+        }
+
+        if(strcmp(slots[i], "nacionalidade") == 0) {
+            dados->playerNatSize = strlen(slots[i+1]);
+            strcpy(dados->playerNat, slots[i+1]);
+        }
+
+        if(strcmp(slots[i], "nomeClube") == 0) {
+            dados->playerClubSize = strlen(slots[i+1]);
+            strcpy(dados->playerClub, slots[i+1]);
+        }
+    }
+
+    fseek(inFile, 1, SEEK_SET);
+    fread(lixo, 16, 1, inFile);
+    fread(&onReg, 4, 1, inFile);
+    fread(&offReg, 4, 1, inFile);
+
+    total = onReg + offReg;
+
+    printf("Busca %d\n\n", buscaAtual + 1);
+
+    // Itera sobre todos os registros do arquivo
+    for(int i = 0; i < total; ++i) {
+        fread(&(scan->removed), 1, 1, inFile);
+        fread(&(scan->registerSize), sizeof(int), 1, inFile);
+
+        if(scan->removed == '1') {
+            fseek(inFile, scan->registerSize - 5, SEEK_CUR);
+            continue;
+        }
+
+        fread(lixo, 12, 1, inFile);
+
+        fread(&(scan->playerAge), sizeof(int), 1, inFile);
+
+        fread(&(scan->playerNameSize), sizeof(int), 1, inFile);
+        fread(scan->playerName, scan->playerNameSize, 1, inFile);
+        (scan->playerName)[scan->playerNameSize] = '\0';
+
+        fread(&(scan->playerNatSize), sizeof(int), 1, inFile);
+        fread(scan->playerNat, scan->playerNatSize, 1, inFile);
+        (scan->playerNat)[scan->playerNatSize] = '\0';
+
+        fread(&(scan->playerClubSize), sizeof(int), 1, inFile);
+        fread(scan->playerClub, scan->playerClubSize, 1, inFile);
+        (scan->playerClub)[scan->playerClubSize] = '\0';
+
+        // Verifica e compara os campos lidos com aqueles da busca
+
+        if((dados->playerAge != -1) && (dados->playerAge != scan->playerAge)) {
+            continue;
+        }
+
+        if((dados->playerNameSize != -1) && (dados->playerNameSize != scan->playerNameSize)) {
+            continue;
+        } else if(strcmp(dados->playerName, scan->playerName) != 0 && dados->playerNameSize != -1) {
+            continue;
+        }
+
+        if(dados->playerNatSize != -1 && dados->playerNatSize != scan->playerNatSize) {
+            continue;
+        } else if(strcmp(dados->playerNat, scan->playerNat) != 0 && dados->playerNatSize != -1) {
+            continue;
+        }
+
+        if(dados->playerClubSize != -1 && dados->playerClubSize != scan->playerClubSize) {
+            continue;
+        } else if(strcmp(dados->playerClub, scan->playerClub) != 0 && dados->playerClubSize != -1) {
+            continue;
+        }
+
+        // Imprime as informações caso o registros seja válido para a busca
+        if(scan->playerNameSize == -1)
+            printf("Nome do Jogador: SEM DADO\n");
+        else
+            printf("Nome do Jogador: %s\n", scan->playerName);
+            
+        if(scan->playerNatSize == -1)
+            printf("Nacionalidade do Jogador: SEM DADO\n");
+        else
+            printf("Nacionalidade do Jogador: %s\n", scan->playerNat);
+
+        if(scan->playerClubSize == -1)
+            printf("Clube do Jogador: SEM DADO\n\n");
+        else
+            printf("Clube do Jogador: %s\n\n", scan->playerClub);
+        
+    }
+
+    free(scan->playerName);
+    free(scan->playerNat);
+    free(scan->playerClub);
+    free(dados->playerName);
+    free(dados->playerNat);
+    free(dados->playerClub);
+    free(scan);
+    free(dados);
 }

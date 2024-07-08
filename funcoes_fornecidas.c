@@ -47,7 +47,7 @@ void scan_quote_string(char *str) {
 
 	while((R = getchar()) != EOF && isspace(R)); // ignorar espaços, \r, \n...
 
-	if(R == 'N' || R == 'n') { // campo NULO
+	if(R == 'N') { // campo NULO
 		getchar(); getchar(); getchar(); // ignorar o "ULO" de NULO.
 		strcpy(str, ""); // copia string vazia
 	} else if(R == '\"') {

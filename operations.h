@@ -8,7 +8,6 @@
     */
 
     #include "fileFunctions.h"
-    #include "funcoes_fornecidas.h"
     
     // Funcionalidade 1
     void Operation1(char* inFileName, char* outFileName);
@@ -26,6 +25,18 @@
     void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions);
 
     // Funcionalidade 6
-    void Operation6(char* inFileName, char* IndexFileName);
+    void Operation6(char* inFileName, char* IndexFileName, int insertions);
+
+    // Funcionalidade 7
+    void Operation7(char* inFileName, char* bTreeFileName);
+
+    // Funcionalidade 8
+    void Operation8(char* inFileName, char* bTreeFileName, int searches);
+
+    // Funcionalidade 9
+    void Operation9(char* inFileName, char* bTreeFileName, int searches);
+
+    // Funcionalidade 10
+    void Operation10(char* inFileName, char* bTreeFileName, int insertions);
 
 #endif

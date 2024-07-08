@@ -12,9 +12,10 @@
 #include "operations.h"
 
 int main(void) {
-    // Variáveis para o número da funcionalidade (de 1 a 6),
-    // o número de buscas (funcionalidade 3) e de remoções (funcionalidade 5)
-    int operation, numberOfSearches, numberOfRemotions;
+    // Variáveis para o número da funcionalidade (de 1 a 10),
+    // o número de buscas (funcionalidade 3, 8 e 9), de remoções (funcionalidade 5) e
+    // de inserções (funcionalidades 6 e 10 )
+    int operation, numberOfSearches, numberOfRemotions, numberOfInsertion;
     // Variáveis para as strings dos nomes dos arquivos de
     // entrada e de saída
     char *inFileName, *outFileName, *indexFileName;
@@ -54,8 +55,28 @@ int main(void) {
             break;
         case 6:
             // Funcionalidade 6
+            scanf("%s %d", indexFileName, &numberOfInsertion);
+            Operation6(inFileName, indexFileName, numberOfInsertion);
+            break;
+        case 7:
+            // Funcionalidade 7
             scanf("%s", indexFileName);
-            Operation6(inFileName, indexFileName);
+            Operation7(inFileName, indexFileName);
+            break;
+        case 8:
+            // Funcionalidade 8
+            scanf("%s %d", indexFileName, &numberOfSearches);
+            Operation8(inFileName, indexFileName, numberOfSearches);
+            break;
+        case 9:
+            // Funcionalidade 9
+            scanf("%s %d", indexFileName, &numberOfSearches);
+            Operation9(inFileName, indexFileName, numberOfSearches);
+            break;
+        case 10:
+            // Funcionalidade 10
+            scanf("%s %d", indexFileName, &numberOfInsertion);
+            Operation10(inFileName, indexFileName, numberOfInsertion);
             break;
         default:
             printf("Falha no processamento do arquivo.\n");
@@ -71,4 +92,3 @@ int main(void) {
     
     return 0;
 }
-

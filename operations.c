@@ -67,7 +67,6 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
 
     headerOp = CreateHeader();
 
-
     // ITERA UMA VEZ PRA CADA REMOÇÃO
     for(int i = 0; i < numberOfRemotions; i++) {
         // Erro na remoção de número i
@@ -76,7 +75,6 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
             return;
         }
     }
-
 
     FreeMemoryHeader(&headerOp);
 
@@ -98,8 +96,145 @@ void Operation5(char* inFileName, char* indexFileName, int numberOfRemotions) {
 }
 
 // Controle da operação 6
-void Operation6(char* inFileName, char* IndexFileName) {
-    Insert(inFileName); // Inserção dos registros
+void Operation6(char* inFileName, char* IndexFileName, int insertions) {
+    // Inserção dos registros
+    FILE* inFile;
+
+    inFile = fopen(inFileName, "rb+");
+    if(inFile == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    if(!Insert(inFile, insertions, NULL, false)) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
     binarioNaTela(inFileName);
     Operation4(inFileName, IndexFileName); // Criação do último índice
+}
+
+// Controle da operação 7
+void Operation7(char* inFileName, char* bTreeFileName) {
+    FILE* inFile, *treeFile;
+
+    // Abre o arquivo binário para leitura
+    if((inFile = fopen(inFileName, "rb")) == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Abre o arquivo da árvore b para leitura/escrita
+    if((treeFile = fopen(bTreeFileName, "wb+")) == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(inFile);
+        return;
+    }
+
+    // Cria a árvore b
+    if(!CreateBTree(inFile, treeFile)) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(inFile);
+        fclose(treeFile);
+    }
+    else {
+        fclose(inFile);
+        fclose(treeFile);
+        binarioNaTela(bTreeFileName);
+    }
+}
+
+// Controle da operação 8
+void Operation8(char* inFileName, char* bTreeFileName, int searches) {
+    FILE* inFile, *treeFile;
+    char status;
+
+    // Abre o arquivo binário para leitura
+    if((inFile = fopen(inFileName, "rb")) == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Verifica a consistência do arquivo binário
+    fread(&status, sizeof(char), 1, inFile);
+    if(status == '0') {
+        fclose(inFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Abre o arquivo da árvore b
+    if((treeFile = fopen(bTreeFileName, "rb+")) == NULL) {
+        fclose(inFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Verifica a consistência do arquivo árvore b
+    fread(&status, sizeof(char), 1, treeFile);
+    if(status == '0') {
+        fclose(inFile);
+        fclose(treeFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    
+    char stringID[3]; // Leitura da string "id"
+    int IDtoBeFound; // Leitura do valor do id
+
+    // Faz as buscas necessárias
+    for(int i = 0; i < searches; i++) {
+        scanf("%s %d", stringID, &IDtoBeFound);
+        SearchWithIdAbTree(treeFile, inFile, i, IDtoBeFound, true);
+    }
+
+    fclose(inFile);
+    fclose(treeFile);
+}
+
+// Controle da operação 9
+void Operation9(char* inFileName, char* bTreeFileName, int searches) {
+    searchControl09(inFileName, bTreeFileName, searches);
+}
+
+// Controle da operação 10
+void Operation10(char* inFileName, char* bTreeFileName, int insertions) {
+    FILE* inFile;
+    FILE* bTreeFile;
+    char status;
+
+    inFile = fopen(inFileName, "rb+");
+    if(inFile == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    fread(&status, sizeof(char), 1, inFile);
+    if(status == '0') {
+        fclose(inFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    bTreeFile = fopen(bTreeFileName, "rb+");
+    if(bTreeFile == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(inFile);
+        return;
+    }
+
+    if(status == '0') {
+        fclose(inFile);
+        fclose(bTreeFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    
+    if(!Insert(inFile, insertions, bTreeFile, true)) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    binarioNaTela(inFileName);
+    binarioNaTela(bTreeFileName);
 }

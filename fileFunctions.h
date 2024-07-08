@@ -34,6 +34,15 @@
     void WriteBinIndex(char* indexFileName, long long* bytesOffSet);
 
     // Insere os registros num arquivo .bin
-    void Insert(char* inFileName);
+    bool Insert(FILE* inFile, int insertions, FILE* treeFile, bool bTree);
 
+    // Busca por um Id na árvore b
+    void SearchWithIdAbTree(FILE* treeFile, FILE* binFile, int numberOfSearch, int IDtoBeFound, bool option);
+
+    // Função auxiliar para buscas da operação 9
+    bool search09(FILE* treeFile, FILE* inFile, int buscaAtual);
+
+    // Controle da busca da operação 9
+    void searchControl09(char* inFileName, char* BTreeFileName, int searches);
+    
 #endif

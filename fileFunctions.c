@@ -281,8 +281,6 @@ bool RemotionBinFile(char *inFileName, char* indexFileName, int n, HEADER* heade
     else
         return false;
 
-
-
     for(int i = 0; i < duplas; i++) {
         free(campName[i]);
         free(campValue[i]);
@@ -310,18 +308,204 @@ void WriteBinIndex(char* indexFileName, long long* bytesOffSet) {
 }
 
 // Insere os registros no arquivo binário inFileName
-void Insert(char* inFileName) {
-    int NInsercoes; // Número de inserções
-    FILE* inFile;
+bool Insert(FILE* inFile, int insertions, FILE* treeFile, bool bTree) {
+    if(insertions > 0) {
+        int nextByteOffset = CreateList(inFile); // Byte final do arquivo e Criação da lista de removidos
+        if(nextByteOffset == -1) {
+            fclose(inFile);
+            return false;
+        }
 
-    scanf("%d", &NInsercoes);
-
-    inFile = fopen(inFileName, "rb+");
-
-    if(NInsercoes > 0) {
-        int teste = CreateList(inFile); // Byte final do arquivo e Criação da lista de removidos
-        Inserir(inFile, NInsercoes, teste); // Insere um novo registro
+        Inserir(inFile, insertions, nextByteOffset, treeFile, bTree); // Insere os novos registros
         ClearList(inFile); // Desaloca a lista
     }
+
+    char status = '1';
+    fseek(treeFile, 0, SEEK_SET);
+    fwrite(&status, sizeof(char), 1, treeFile);
+
+    fclose(treeFile);
     fclose(inFile);
+    return true;
+}
+
+// Busca por um Id (IDtoBeFound) na árvore b (treeFile)
+void SearchWithIdAbTree(FILE* treeFile, FILE* binFile, int numberOfSearch, int IDtoBeFound, bool option) {
+    int noRaiz;
+
+    fseek(treeFile, 1, SEEK_SET);
+    fread(&noRaiz, sizeof(int), 1, treeFile);
+
+    char status;
+    int tamNome, tamNacionalidade, tamClube, tamRegistro, lixoInt;
+    char nome[100], nacionalidade[100], clube[100], lixoStr[100];
+    long long lixoLong;
+
+    // Obtém o byteoffset do id procurado no arquivo binário
+    long long byteOffSetToBeFound = SearchRegister(treeFile, noRaiz, IDtoBeFound);
+
+    // Se não achou o item
+    if(byteOffSetToBeFound == -1) {
+        if(option)
+            printf("BUSCA %d\n\n", numberOfSearch + 1);
+        else
+            printf("Busca %d\n\n", numberOfSearch + 1);
+        printf("Registro inexistente.\n\n");
+        return;
+    }
+
+    // Pula para o Byte Offset do registro
+    fseek(binFile, byteOffSetToBeFound, SEEK_SET);
+    fread(&status, sizeof(char), 1, binFile);
+    fread(&tamRegistro, sizeof(int), 1, binFile);
+
+    // Se o registro estiver removido
+    if(status == '1') {
+        printf("Registro inexistente.\n\n");
+        fclose(binFile);
+        fclose(treeFile);
+        return;
+    }
+
+    fread(&(lixoLong), sizeof(long long), 1, binFile);
+
+    // Atualiza o ID e a idade do jogador
+    fread(&(lixoInt), sizeof(int), 1, binFile);
+    fread(&(lixoInt), sizeof(int), 1, binFile);
+
+    // Atualiza os campos variáveis e os tamanhos dos campos
+
+    fread(&tamNome, sizeof(int), 1, binFile);
+    fread(nome, tamNome, 1, binFile);
+    nome[tamNome] = '\0';
+
+    fread(&tamNacionalidade, sizeof(int), 1, binFile);
+    fread(nacionalidade, tamNacionalidade, 1, binFile);
+    (nacionalidade)[tamNacionalidade] = '\0';
+
+    fread(&tamClube, sizeof(int), 1, binFile);
+    fread(clube, tamClube, 1, binFile);
+    clube[tamClube] = '\0';
+
+    if(option)
+        printf("BUSCA %d\n\n", numberOfSearch + 1);
+    else
+        printf("Busca %d\n\n", numberOfSearch + 1);
+
+    if(tamNome == 0)
+        printf("Nome do Jogador: SEM DADO\n");
+    else
+        printf("Nome do Jogador: %s\n", nome);
+                
+    if(tamNacionalidade == 0)
+        printf("Nacionalidade do Jogador: SEM DADO\n");
+    else
+        printf("Nacionalidade do Jogador: %s\n", nacionalidade);
+
+    if(tamClube == 0)
+        printf("Clube do Jogador: SEM DADO\n\n");
+    else
+        printf("Clube do Jogador: %s\n\n", clube);
+
+}
+
+// Controle principal da busca da operação 9
+void searchControl09(char* inFileName, char* BTreeFileName, int searches) {
+    FILE* inFile, *treeFile;
+    char lixo, status;
+
+    // Abre o arquivo binário para leitura
+    if((inFile = fopen(inFileName, "rb+")) == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Verifica a consistência do arquivo binário
+    fread(&status, sizeof(char), 1, inFile);
+    if(status == '0') {
+        fclose(inFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Abre o arquivo da árvore b
+    if((treeFile = fopen(BTreeFileName, "rb+")) == NULL) {
+        fclose(inFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Verifica a consistência do arquivo árvore b
+    fread(&status, sizeof(char), 1, treeFile);
+    if(status == '0') {
+        fclose(inFile);
+        fclose(treeFile);
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+
+    // Faz as buscas necessárias
+    for(int i = 0; i < searches; i++) {
+        if(!search09(treeFile, inFile, i)) {
+            printf("Falha no processamento do arquivo.\n");
+            fclose(inFile);
+            fclose(treeFile);
+            return;
+        }
+        scanf("%c", &lixo);
+    }
+
+    fclose(inFile);
+    fclose(treeFile);
+}
+    
+// Função auxiliar para buscas da operação 9
+bool search09(FILE* treeFile, FILE* inFile, int buscaAtual) {
+    int nSlots, idIndex, id;
+    bool idTrigger = false;
+    char** slots;
+    scanf("%d", &nSlots); // Número de campos a serem buscados na busca atual
+
+    // Aloca espaço para os campos de busca e seus valores
+    slots = (char**) malloc(sizeof(char*) * nSlots * 2);
+
+    if(slots == NULL) {
+        return false;
+    }
+
+    for(int i = 0; i < (nSlots * 2); ++i) {
+        slots[i] = (char*) malloc(40 * sizeof(char));
+
+        if(slots[i] == NULL) {
+            return false;
+        }
+    }
+
+    for(int i = 0; i < (nSlots * 2); i = i + 2) {
+        scanf("%s", slots[i]); // Lê o campo de busca
+        scan_quote_string(slots[i + 1]); // Lê o valor do campo de busca
+
+        // Verifica se o campo é o id
+        if(strcmp(slots[i], "id") == 0) {
+            idIndex = i+1;
+            idTrigger = true;
+        }
+
+    }
+
+    // Se há a busca por id
+    if(idTrigger) {
+        id = atoi(slots[idIndex]);
+        SearchWithIdAbTree(treeFile, inFile, buscaAtual, id, false);
+    // Se não há busca por id
+    } else {
+        searchWithoutId(inFile, buscaAtual, slots, nSlots);
+    }
+
+    for(int i = 0; i < nSlots*2; ++i) {
+        free(slots[i]);
+    }
+    free(slots);
+
+    return true;
 }
